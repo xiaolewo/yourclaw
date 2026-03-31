@@ -23,6 +23,9 @@ const brandConfig = {
   supportEmail: args.supportEmail || '',
 }
 
+console.log('[Brand] Parsed args:', JSON.stringify(args, null, 2))
+console.log('[Brand] Brand config:', JSON.stringify(brandConfig, null, 2))
+
 // 1. Write brand/config.json
 const brandDir = path.join(__dirname, '..', 'brand')
 if (!fs.existsSync(brandDir)) fs.mkdirSync(brandDir, { recursive: true })
