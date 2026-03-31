@@ -60,10 +60,16 @@ jobs:
           npm install
           npm ls rollup || true
 
-      - name: Download logo
+      - name: Download logo and convert to ico
         if: github.event.inputs.logoUrl != ''
         shell: bash
-        run: curl -fsSL "${{ github.event.inputs.logoUrl }}" -o resources/icon.png || true
+        run: |
+          curl -fsSL "${{ github.event.inputs.logoUrl }}" -o resources/icon.png || true
+          if [ -f resources/icon.png ]; then
+            choco install imagemagick -y --no-progress 2>/dev/null || true
+            magick resources/icon.png -resize 256x256 resources/icon.ico 2>/dev/null || \
+            ffmpeg -i resources/icon.png -vf scale=256:256 -y resources/icon.ico 2>/dev/null || true
+          fi
 
       - name: Inject brand
         shell: bash
@@ -146,9 +152,22 @@ jobs:
           rm -rf node_modules
           npm install
 
-      - name: Download logo
+      - name: Download logo and convert to icns
         if: github.event.inputs.logoUrl != ''
-        run: curl -fsSL "${{ github.event.inputs.logoUrl }}" -o resources/icon.png || true
+        run: |
+          curl -fsSL "${{ github.event.inputs.logoUrl }}" -o resources/icon.png || true
+          if [ -f resources/icon.png ]; then
+            ICONSET=/tmp/icon.iconset
+            mkdir -p "$ICONSET"
+            for size in 16 32 64 128 256 512; do
+              sips -z $size $size resources/icon.png --out "$ICONSET/icon_${size}x${size}.png" 2>/dev/null || true
+            done
+            for size in 32 64 256 512; do
+              half=$((size/2))
+              cp "$ICONSET/icon_${size}x${size}.png" "$ICONSET/icon_${half}x${half}@2x.png" 2>/dev/null || true
+            done
+            iconutil -c icns "$ICONSET" -o resources/icon.icns 2>/dev/null || true
+          fi
 
       - name: Inject brand
         run: |
