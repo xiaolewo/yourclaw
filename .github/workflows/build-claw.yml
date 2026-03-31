@@ -60,6 +60,16 @@ jobs:
           npm install
           npm ls rollup || true
 
+      - name: Install OpenClaw engine
+        shell: bash
+        run: |
+          cd openclaw
+          rm -f index.js
+          npm init -y
+          npm install openclaw@latest
+          echo "[OpenClaw] Installed version:"
+          node -e "console.log(require('./node_modules/openclaw/package.json').version)"
+
       - name: Download logo and convert to ico
         if: github.event.inputs.logoUrl != ''
         shell: bash
@@ -151,6 +161,15 @@ jobs:
         run: |
           rm -rf node_modules
           npm install
+
+      - name: Install OpenClaw engine
+        run: |
+          cd openclaw
+          rm -f index.js
+          npm init -y
+          npm install openclaw@latest
+          echo "[OpenClaw] Installed version:"
+          node -e "console.log(require('./node_modules/openclaw/package.json').version)"
 
       - name: Download logo and convert to icns
         if: github.event.inputs.logoUrl != ''

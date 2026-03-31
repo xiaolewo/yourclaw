@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, safeStorage, shell } from 'electron'
 import * as path from 'path'
 import { getBrandConfig } from './brand-config'
-import { startOpenClaw, stopOpenClaw, restartOpenClaw, isOpenClawRunning, updateOpenClawToken, getOpenClawPort } from './openclaw-manager'
+import { startOpenClaw, stopOpenClaw, restartOpenClaw, isOpenClawRunning, updateOpenClawToken, getOpenClawPort, ensureOpenClawConfig } from './openclaw-manager'
 import { checkLicense, startHeartbeat, stopHeartbeat } from './license-guard'
 import { createTray, destroyTray } from './tray'
 import { initUpdater, checkForUpdates, downloadUpdate } from './updater'
@@ -106,6 +106,9 @@ function setupIPC() {
   // OpenClaw management
   ipcMain.handle('start-openclaw', async () => {
     try {
+      // Ensure latest JWT is in OpenClaw config before starting
+      const token = getDecryptedToken()
+      if (token) ensureOpenClawConfig(token)
       await startOpenClaw()
       return { success: true }
     } catch (err: any) {
@@ -180,6 +183,8 @@ if (!gotLock) {
   })
 
   app.whenReady().then(() => {
+    // Pre-write OpenClaw config with brand info
+    ensureOpenClawConfig()
     setupIPC()
     createWindow()
   })
