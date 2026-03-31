@@ -54,10 +54,11 @@ jobs:
           node-version: '22'
 
       - name: Install dependencies
-        run: |
-          rm -rf node_modules
-          npm install
         shell: bash
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install
+          npm ls rollup || true
 
       - name: Download logo
         if: github.event.inputs.logoUrl != ''
@@ -84,6 +85,7 @@ jobs:
           cp "/tmp/node-extract/node-v22.19.0-win-x64/node.exe" bundled-node/node.exe
 
       - name: Build
+        shell: bash
         run: npm run build
 
       - name: Package
