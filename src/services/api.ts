@@ -26,9 +26,10 @@ async function request<T = any>(path: string, options: RequestInit = {}): Promis
     throw new Error('登录已过期，请重新登录')
   }
 
-  const data = await res.json()
-  if (!res.ok) throw new Error(data.message || `请求失败 (${res.status})`)
-  return data
+  const json = await res.json()
+  if (!res.ok) throw new Error(json.message || `请求失败 (${res.status})`)
+  // Backend wraps response as { code, message, data }, unwrap it
+  return json.data !== undefined ? json.data : json
 }
 
 export const clawApi = {

@@ -30,6 +30,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       webviewTag: true,
+      webSecurity: false,
     },
   })
 
