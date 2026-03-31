@@ -52,27 +52,28 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          rm -rf node_modules
+          npm install
+        shell: bash
 
       - name: Download logo
         if: github.event.inputs.logoUrl != ''
         shell: bash
-        run: |
-          curl -fsSL "${{ github.event.inputs.logoUrl }}" -o resources/icon.png || true
+        run: curl -fsSL "${{ github.event.inputs.logoUrl }}" -o resources/icon.png || true
 
       - name: Inject brand
+        shell: bash
         run: |
-          node scripts/build-branded.js ^
-            --siteUrl=${{ github.event.inputs.siteUrl }} ^
-            --siteName=${{ github.event.inputs.siteName }} ^
-            --licenseKey=${{ github.event.inputs.licenseKey }} ^
-            --color=${{ github.event.inputs.primaryColor }} ^
-            --supportWechat=${{ github.event.inputs.supportWechat }} ^
-            --supportEmail=${{ github.event.inputs.supportEmail }}
-        shell: cmd
+          node scripts/build-branded.js \
+            "--siteUrl=${{ github.event.inputs.siteUrl }}" \
+            "--siteName=${{ github.event.inputs.siteName }}" \
+            "--licenseKey=${{ github.event.inputs.licenseKey }}" \
+            "--color=${{ github.event.inputs.primaryColor }}" \
+            "--supportWechat=${{ github.event.inputs.supportWechat }}" \
+            "--supportEmail=${{ github.event.inputs.supportEmail }}"
 
       - name: Bundle Node.js (Windows)
         shell: bash
@@ -98,12 +99,12 @@ jobs:
           COS_BUCKET: ${{ secrets.COS_BUCKET }}
           COS_REGION: ${{ secrets.COS_REGION }}
         run: |
-          npm install -g coscmd 2>/dev/null || pip install coscmd
+          pip install coscmd --break-system-packages 2>/dev/null || pip install coscmd
+          coscmd config -a "$COS_SECRET_ID" -s "$COS_SECRET_KEY" -b "$COS_BUCKET" -r "$COS_REGION"
           EXE_FILE=$(ls release/*.exe 2>/dev/null | head -1)
           if [ -n "$EXE_FILE" ]; then
             FILENAME=$(basename "$EXE_FILE")
             KEY="claw-builds/${BUILD_ID}/${FILENAME}"
-            coscmd config -a "$COS_SECRET_ID" -s "$COS_SECRET_KEY" -b "$COS_BUCKET" -r "$COS_REGION"
             coscmd upload "$EXE_FILE" "$KEY"
             CDN="${{ secrets.COS_CDN_DOMAIN }}"
             [ -z "$CDN" ] && CDN="https://${COS_BUCKET}.cos.${COS_REGION}.myqcloud.com"
@@ -137,10 +138,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          rm -rf node_modules
+          npm install
 
       - name: Download logo
         if: github.event.inputs.logoUrl != ''
@@ -149,12 +151,12 @@ jobs:
       - name: Inject brand
         run: |
           node scripts/build-branded.js \
-            --siteUrl="${{ github.event.inputs.siteUrl }}" \
-            --siteName="${{ github.event.inputs.siteName }}" \
-            --licenseKey="${{ github.event.inputs.licenseKey }}" \
-            --color="${{ github.event.inputs.primaryColor }}" \
-            --supportWechat="${{ github.event.inputs.supportWechat }}" \
-            --supportEmail="${{ github.event.inputs.supportEmail }}"
+            "--siteUrl=${{ github.event.inputs.siteUrl }}" \
+            "--siteName=${{ github.event.inputs.siteName }}" \
+            "--licenseKey=${{ github.event.inputs.licenseKey }}" \
+            "--color=${{ github.event.inputs.primaryColor }}" \
+            "--supportWechat=${{ github.event.inputs.supportWechat }}" \
+            "--supportEmail=${{ github.event.inputs.supportEmail }}"
 
       - name: Bundle Node.js (macOS x64)
         run: bash scripts/bundle-node.sh darwin x64
@@ -174,7 +176,7 @@ jobs:
           COS_BUCKET: ${{ secrets.COS_BUCKET }}
           COS_REGION: ${{ secrets.COS_REGION }}
         run: |
-          pip3 install coscmd
+          pip3 install coscmd --break-system-packages
           coscmd config -a "$COS_SECRET_ID" -s "$COS_SECRET_KEY" -b "$COS_BUCKET" -r "$COS_REGION"
           CDN="${{ secrets.COS_CDN_DOMAIN }}"
           [ -z "$CDN" ] && CDN="https://${COS_BUCKET}.cos.${COS_REGION}.myqcloud.com"
