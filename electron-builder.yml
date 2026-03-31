@@ -37,7 +37,6 @@ nsis:
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: ${productName}
-  installerSidebar: resources/installer-sidebar.bmp
   license: ""
 mac:
   target:
