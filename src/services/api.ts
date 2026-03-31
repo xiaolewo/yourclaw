@@ -18,7 +18,13 @@ async function request<T = any>(path: string, options: RequestInit = {}): Promis
   }
   if (token) headers['Authorization'] = `Bearer ${token}`
 
-  const res = await fetch(`${baseUrl}${path}`, { ...options, headers })
+  const url = `${baseUrl}${path}`
+  let res: Response
+  try {
+    res = await fetch(url, { ...options, headers })
+  } catch (err: any) {
+    throw new Error(`网络请求失败: ${url} (${err.message})`)
+  }
 
   if (res.status === 401) {
     useAuthStore.getState().clearToken()
@@ -28,7 +34,6 @@ async function request<T = any>(path: string, options: RequestInit = {}): Promis
 
   const json = await res.json()
   if (!res.ok) throw new Error(json.message || `请求失败 (${res.status})`)
-  // Backend wraps response as { code, message, data }, unwrap it
   return json.data !== undefined ? json.data : json
 }
 
