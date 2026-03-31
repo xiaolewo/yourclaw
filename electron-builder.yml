@@ -1,0 +1,72 @@
+appId: com.yourclaw.app
+productName: YourClaw
+directories:
+  output: release
+files:
+  - dist/**/*
+  - dist-electron/**/*
+  - brand/**/*
+  - resources/**/*
+extraResources:
+  - from: brand
+    to: brand
+  - from: openclaw
+    to: openclaw
+  # Bundled Node.js runtime (populate via scripts/bundle-node.sh before build)
+  - from: bundled-node
+    to: node
+    filter:
+      - "**/*"
+asar: true
+asarUnpack:
+  - "resources/**"
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: resources/icon.ico
+  requestedExecutionLevel: asInvoker
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  installerIcon: resources/icon.ico
+  uninstallerIcon: resources/icon.ico
+  installerHeaderIcon: resources/icon.ico
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: ${productName}
+  installerSidebar: resources/installer-sidebar.bmp
+  license: ""
+mac:
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+  icon: resources/icon.icns
+  category: public.app-category.productivity
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  hardenedRuntime: true
+  gatekeeperAssess: false
+dmg:
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications
+  window:
+    width: 540
+    height: 380
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+  icon: resources/icon.png
+  category: Utility
+publish: null
