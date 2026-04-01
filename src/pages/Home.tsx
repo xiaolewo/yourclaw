@@ -28,8 +28,15 @@ export default function Home() {
 
         // Start OpenClaw gateway and get URL
         const result = await window.electronAPI.startOpenClaw()
-        if (result.error) {
-          setError(`AI 引擎启动失败: ${result.error}`)
+        if (!result.success) {
+          setError(`AI 引擎启动失败: ${result.error || '未知错误'}`)
+          return
+        }
+        // Verify engine is actually running before loading webview
+        const running = await window.electronAPI.isOpenClawRunning()
+        if (!running) {
+          setError('AI 引擎启动后未能正常运行，请重试')
+          return
         }
         const url = await window.electronAPI.getOpenClawUrl()
         setClawUrl(url)
@@ -83,8 +90,22 @@ export default function Home() {
   const handleRetry = async () => {
     setLoading(true)
     setError(null)
+    setClawUrl(null)
     try {
-      await window.electronAPI.restartOpenClaw()
+      const models = await clawApi.getModels().catch(() => [])
+      if (models.length > 0) {
+        await window.electronAPI.syncOpenClawModels(models)
+      }
+      const result = await window.electronAPI.restartOpenClaw()
+      if (!result.success) {
+        setError(`AI 引擎启动失败: ${result.error || '未知错误'}`)
+        return
+      }
+      const running = await window.electronAPI.isOpenClawRunning()
+      if (!running) {
+        setError('AI 引擎启动后未能正常运行')
+        return
+      }
       const url = await window.electronAPI.getOpenClawUrl()
       setClawUrl(url)
     } catch (err: any) {

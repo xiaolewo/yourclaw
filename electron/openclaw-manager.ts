@@ -220,6 +220,10 @@ export function startOpenClaw(): Promise<void> {
     const nodePath = getNodePath()
     const clawBin = getOpenClawBin()
 
+    console.log('[OpenClaw] clawDir:', clawDir)
+    console.log('[OpenClaw] nodePath:', nodePath, 'exists:', fs.existsSync(nodePath))
+    console.log('[OpenClaw] clawBin:', clawBin, 'exists:', fs.existsSync(clawBin))
+
     if (!fs.existsSync(clawBin)) {
       // Fallback: try old index.js placeholder
       const fallbackEntry = path.join(clawDir, 'index.js')
@@ -234,8 +238,8 @@ export function startOpenClaw(): Promise<void> {
         attachProcessHandlers(resolve, reject)
         return
       }
-      console.warn('[OpenClaw] No entry script found at:', clawBin)
-      resolve()
+      console.error('[OpenClaw] No entry script found at:', clawBin)
+      reject(new Error(`OpenClaw 引擎未找到: ${clawBin}`))
       return
     }
 
@@ -299,15 +303,24 @@ function attachProcessHandlers(resolve: () => void, reject: (err: Error) => void
   openClawProcess.on('exit', (code) => {
     console.log('[OpenClaw] Exited with code:', code)
     openClawProcess = null
+    if (!started) {
+      started = true
+      reject(new Error(`OpenClaw 引擎异常退出 (code: ${code})`))
+    }
   })
 
-  // Timeout: resolve after 5s even if no "ready" message
+  // Timeout: resolve after 8s even if no "ready" message (gateway may take time)
   setTimeout(() => {
     if (!started) {
       started = true
-      resolve()
+      if (openClawProcess && !openClawProcess.killed) {
+        console.log('[OpenClaw] No ready signal, but process is running. Assuming started.')
+        resolve()
+      } else {
+        reject(new Error('OpenClaw 引擎启动超时'))
+      }
     }
-  }, 5000)
+  }, 8000)
 }
 
 export function stopOpenClaw(): void {
