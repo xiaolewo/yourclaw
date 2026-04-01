@@ -43,6 +43,26 @@ export default function Home() {
     init()
   }, [])
 
+  // Inject gateway auth token into webview localStorage once it loads
+  useEffect(() => {
+    const wv = webviewRef.current
+    if (!wv || !clawUrl) return
+    const onDomReady = () => {
+      const tokenMatch = clawUrl.match(/[?&]token=([^&]+)/)
+      if (tokenMatch) {
+        const token = tokenMatch[1]
+        wv.executeJavaScript(`
+          try {
+            localStorage.setItem('gateway.auth.token', '${token}');
+            localStorage.setItem('gatewayAuthToken', '${token}');
+          } catch(e) {}
+        `).catch(() => {})
+      }
+    }
+    wv.addEventListener('dom-ready', onDomReady)
+    return () => wv.removeEventListener('dom-ready', onDomReady)
+  }, [clawUrl])
+
   // Periodically refresh user info (points)
   useEffect(() => {
     const timer = setInterval(async () => {
