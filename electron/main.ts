@@ -132,7 +132,11 @@ function setupIPC() {
 
   ipcMain.handle('is-openclaw-running', () => isOpenClawRunning())
 
-  ipcMain.handle('get-openclaw-url', () => `http://localhost:${getOpenClawPort()}`)
+  ipcMain.handle('get-openclaw-url', () => {
+    const brand = getBrandConfig()
+    const gatewayToken = 'ycw-' + Buffer.from(brand.licenseKey || 'yourclaw').toString('base64').replace(/[^a-zA-Z0-9]/g, '').slice(0, 32)
+    return `http://localhost:${getOpenClawPort()}?token=${gatewayToken}`
+  })
 
   ipcMain.handle('sync-openclaw-models', (_event, models: any[]) => {
     try {

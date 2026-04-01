@@ -76,6 +76,8 @@ export function ensureOpenClawConfig(jwt?: string) {
   const brand = getBrandConfig()
   const apiBase = brand.siteUrl.replace(/\/$/, '')
 
+  const gatewayToken = 'ycw-' + Buffer.from(brand.licenseKey || 'yourclaw').toString('base64').replace(/[^a-zA-Z0-9]/g, '').slice(0, 32)
+
   const provider: Record<string, any> = {
     baseUrl: apiBase,
     apiKey: jwt || 'yourclaw-pending',
@@ -86,6 +88,16 @@ export function ensureOpenClawConfig(jwt?: string) {
   const config: Record<string, any> = {
     gateway: {
       port: OPENCLAW_PORT,
+      mode: 'local',
+      bind: 'loopback',
+      controlUi: {
+        allowInsecureAuth: true,
+        dangerouslyDisableDeviceAuth: true,
+      },
+      auth: {
+        mode: 'token',
+        token: gatewayToken,
+      },
     },
     models: {
       mode: 'merge',
@@ -103,7 +115,21 @@ export function ensureOpenClawConfig(jwt?: string) {
   try {
     if (fs.existsSync(configPath)) {
       const existing = JSON.parse(fs.readFileSync(configPath, 'utf-8'))
-      existing.gateway = { ...(existing.gateway || {}), port: OPENCLAW_PORT }
+      existing.gateway = {
+        ...(existing.gateway || {}),
+        port: OPENCLAW_PORT,
+        mode: 'local',
+        bind: 'loopback',
+        controlUi: {
+          ...(existing.gateway?.controlUi || {}),
+          allowInsecureAuth: true,
+          dangerouslyDisableDeviceAuth: true,
+        },
+        auth: {
+          mode: 'token',
+          token: gatewayToken,
+        },
+      }
       existing.models = existing.models || {}
       existing.models.mode = 'merge'
       existing.models.providers = existing.models.providers || {}
@@ -215,12 +241,17 @@ export function startOpenClaw(): Promise<void> {
 
     ensureOpenClawConfig()
 
-    // Start openclaw gateway
+    // Generate a stable gateway auth token (derived from brand licenseKey)
+    const brand = getBrandConfig()
+    const gatewayToken = 'ycw-' + Buffer.from(brand.licenseKey || 'yourclaw').toString('base64').replace(/[^a-zA-Z0-9]/g, '').slice(0, 32)
+
+    // Start openclaw gateway in foreground mode (not service mode)
+    // Use 'gateway run' with --allow-unconfigured to skip mode=local check
     const isScript = clawBin.endsWith('.js') || clawBin.endsWith('.mjs') || clawBin.endsWith('.cjs')
     const command = isScript ? nodePath : clawBin
     const args = isScript
-      ? [clawBin, 'gateway', 'start', '--port', String(OPENCLAW_PORT)]
-      : ['gateway', 'start', '--port', String(OPENCLAW_PORT)]
+      ? [clawBin, 'gateway', 'run', '--port', String(OPENCLAW_PORT), '--token', gatewayToken, '--allow-unconfigured']
+      : ['gateway', 'run', '--port', String(OPENCLAW_PORT), '--token', gatewayToken, '--allow-unconfigured']
 
     console.log('[OpenClaw] Starting:', command, args.join(' '))
 
@@ -230,6 +261,7 @@ export function startOpenClaw(): Promise<void> {
         ...process.env,
         OPENCLAW_DATA_DIR: getDataDir(),
         OPENCLAW_CONFIG_DIR: getConfigDir(),
+        OPENCLAW_GATEWAY_TOKEN: gatewayToken,
         NODE_ENV: 'production',
       },
       stdio: ['pipe', 'pipe', 'pipe'],

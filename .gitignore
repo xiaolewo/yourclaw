@@ -9,3 +9,4 @@ brand/
 openclaw/node_modules/
 openclaw/package.json
 openclaw/package-lock.json
+SETUP_CI.md
