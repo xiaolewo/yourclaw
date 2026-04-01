@@ -43,6 +43,8 @@ export const clawApi = {
     siteLogo: string
     loginMethods: { email: boolean; phone: boolean; wechat: boolean }
     emailVerifyEnabled: boolean
+    wechatMpQrcode: string
+    wechatMpName: string
   }>('/claw/auth/config', { method: 'GET' }),
 
   login: (body: { type: string; email?: string; password?: string; phone?: string; code?: string }) =>
@@ -52,25 +54,25 @@ export const clawApi = {
     }),
 
   sendSmsCode: (phone: string) =>
-    request('/auth/send-sms-code', {
+    request('/api/auth/send-sms-code', {
       method: 'POST',
       body: JSON.stringify({ phone, type: 4 }),
     }),
 
   sendEmailCode: (email: string) =>
-    request('/auth/send-code', {
+    request('/api/auth/send-code', {
       method: 'POST',
       body: JSON.stringify({ email, type: 4 }),
     }),
 
   register: (body: { email?: string; phone?: string; password?: string; code?: string; nickname?: string }) =>
-    request('/auth/register', {
+    request('/api/auth/register', {
       method: 'POST',
       body: JSON.stringify(body),
     }),
 
   registerPhone: (body: { phone: string; code: string; password: string; nickname?: string }) =>
-    request('/auth/register/phone', {
+    request('/api/auth/register/phone', {
       method: 'POST',
       body: JSON.stringify(body),
     }),
@@ -102,5 +104,16 @@ export const clawApi = {
     request<{ valid: boolean; message?: string }>('/claw/heartbeat', {
       method: 'POST',
       body: JSON.stringify({ licenseKey }),
+    }),
+
+  // 微信扫码登录（复用 YourPro wechat-auth 模块）
+  getWechatCode: () =>
+    request<{ code: string; ticket: string; expiresIn: number }>('/api/auth/wechat-code', {
+      method: 'POST',
+    }),
+
+  checkWechatLogin: (ticket: string) =>
+    request<{ status: string; token?: string; user?: any }>(`/api/auth/wechat-check?ticket=${ticket}`, {
+      method: 'GET',
     }),
 }

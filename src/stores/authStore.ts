@@ -17,6 +17,8 @@ export interface LoginConfig {
   siteLogo: string
   loginMethods: { email: boolean; phone: boolean; wechat: boolean }
   emailVerifyEnabled: boolean
+  wechatMpQrcode: string
+  wechatMpName: string
 }
 
 interface AuthState {

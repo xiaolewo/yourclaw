@@ -1,4 +1,7 @@
+import { useState } from 'react'
 import { MessageSquare, Plus, MessageCircle, Bird, Bell, Phone, Send, Gamepad2, Briefcase, Smartphone, type LucideIcon } from 'lucide-react'
+import { useAuthStore } from '@/stores/authStore'
+import ChannelWizard from '@/components/ChannelWizard'
 
 const CHANNEL_TYPES: { key: string; name: string; icon: LucideIcon }[] = [
   { key: 'wechat', name: '微信', icon: MessageCircle },
@@ -12,6 +15,10 @@ const CHANNEL_TYPES: { key: string; name: string; icon: LucideIcon }[] = [
 ]
 
 export default function Channels() {
+  const { brandConfig } = useAuthStore()
+  const [wizardChannel, setWizardChannel] = useState<{ key: string; name: string } | null>(null)
+  const primaryColor = brandConfig?.primaryColor || '#4F46E5'
+
   return (
     <div className="max-w-lg space-y-8">
       <div>
@@ -32,6 +39,7 @@ export default function Channels() {
             return (
               <button
                 key={ch.key}
+                onClick={() => setWizardChannel(ch)}
                 className="flex flex-col items-center gap-2 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-brand/50 hover:bg-brand/5 transition-colors group"
               >
                 <Icon className="w-6 h-6 text-gray-500 dark:text-gray-400 group-hover:text-brand" />
@@ -48,6 +56,10 @@ export default function Channels() {
           通道接入需要在对应平台创建机器人/应用，具体步骤将在向导中引导完成。
         </p>
       </div>
+
+      {wizardChannel && (
+        <ChannelWizard channel={wizardChannel} onClose={() => setWizardChannel(null)} primaryColor={primaryColor} />
+      )}
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuthStore } from '@/stores/authStore'
 import { clawApi } from '@/services/api'
 import { Loader2, RefreshCw, Bot } from 'lucide-react'
@@ -22,6 +22,12 @@ export default function Login() {
   const [smsCode, setSmsCode] = useState('')
   const [phonePassword, setPhonePassword] = useState('')
   const [phoneNickname, setPhoneNickname] = useState('')
+
+  // wechat fields
+  const [wechatCode, setWechatCode] = useState('')
+  const [wechatTicket, setWechatTicket] = useState('')
+  const [wechatLoading, setWechatLoading] = useState(false)
+  const wechatPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -75,6 +81,55 @@ export default function Login() {
       setError(err.message)
     }
   }
+
+  // Wechat: fetch verification code and start polling
+  const startWechatLogin = useCallback(async () => {
+    setWechatLoading(true)
+    setError('')
+    if (wechatPollRef.current) clearInterval(wechatPollRef.current)
+    try {
+      const data = await clawApi.getWechatCode()
+      setWechatCode(data.code)
+      setWechatTicket(data.ticket)
+      // Poll every 2s for confirmation
+      wechatPollRef.current = setInterval(async () => {
+        try {
+          const result = await clawApi.checkWechatLogin(data.ticket)
+          if (result.status === 'confirmed' && result.token) {
+            if (wechatPollRef.current) clearInterval(wechatPollRef.current)
+            await window.electronAPI.setAuthToken(result.token)
+            setToken(result.token)
+            if (result.user) setUser(result.user)
+          } else if (result.status === 'expired') {
+            if (wechatPollRef.current) clearInterval(wechatPollRef.current)
+            setError('验证码已过期，请重新获取')
+            setWechatCode('')
+          }
+        } catch {}
+      }, 2000)
+    } catch (err: any) {
+      setError(err.message || '获取微信验证码失败')
+    } finally {
+      setWechatLoading(false)
+    }
+  }, [setToken, setUser])
+
+  // Cleanup wechat poll on unmount or tab switch
+  useEffect(() => {
+    return () => {
+      if (wechatPollRef.current) clearInterval(wechatPollRef.current)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (tab === 'wechat') {
+      startWechatLogin()
+    } else {
+      if (wechatPollRef.current) clearInterval(wechatPollRef.current)
+      setWechatCode('')
+      setWechatTicket('')
+    }
+  }, [tab, startWechatLogin])
 
   const handleLogin = async () => {
     setLoading(true)
@@ -292,12 +347,39 @@ export default function Login() {
           {/* WeChat */}
           {tab === 'wechat' && (
             <div className="flex flex-col items-center py-4">
-              <div className="w-48 h-48 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl flex items-center justify-center text-gray-400">
-                微信二维码
-              </div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-3">请使用微信扫码登录</p>
-              <button className="mt-2 text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
-                <RefreshCw className="w-3 h-3" /> 刷新二维码
+              {loginConfig?.wechatMpQrcode ? (
+                <img src={loginConfig.wechatMpQrcode} alt="公众号二维码" className="w-48 h-48 rounded-xl object-contain" />
+              ) : (
+                <div className="w-48 h-48 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl flex items-center justify-center text-gray-400 text-sm">
+                  公众号未配置
+                </div>
+              )}
+              {loginConfig?.wechatMpName && (
+                <p className="text-xs text-gray-400 mt-2">公众号：{loginConfig.wechatMpName}</p>
+              )}
+              {wechatLoading ? (
+                <div className="flex items-center gap-2 mt-3 text-sm text-gray-500">
+                  <Loader2 className="w-4 h-4 animate-spin" /> 获取验证码中...
+                </div>
+              ) : wechatCode ? (
+                <div className="mt-3 text-center">
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                    请关注公众号，发送验证码
+                  </p>
+                  <p className="text-3xl font-bold tracking-widest mt-2" style={{ color: primaryColor }}>
+                    {wechatCode}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-2">验证码 5 分钟内有效，登录后自动跳转</p>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-3">请使用微信扫码登录</p>
+              )}
+              <button
+                onClick={startWechatLogin}
+                disabled={wechatLoading}
+                className="mt-3 text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1 disabled:opacity-50"
+              >
+                <RefreshCw className="w-3 h-3" /> 刷新验证码
               </button>
             </div>
           )}

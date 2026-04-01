@@ -68,4 +68,9 @@ linux:
         - x64
   icon: resources/icon.png
   category: Utility
-publish: null
+# Auto-update publish config. Override via CI env vars:
+#   GH_TOKEN + publish.repo for GitHub Releases
+#   or set publish.url for generic/S3 server
+publish:
+  provider: generic
+  url: ${YOURCLAW_UPDATE_URL:-https://update.example.com/yourclaw}

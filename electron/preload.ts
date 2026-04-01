@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   restartOpenClaw: () => ipcRenderer.invoke('restart-openclaw'),
   isOpenClawRunning: () => ipcRenderer.invoke('is-openclaw-running'),
   getOpenClawUrl: () => ipcRenderer.invoke('get-openclaw-url'),
+  syncOpenClawModels: (models: any[]) => ipcRenderer.invoke('sync-openclaw-models', models),
 
   // App
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),

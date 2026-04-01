@@ -20,6 +20,12 @@ export default function Home() {
         const userInfo = await clawApi.getUserInfo().catch(() => null)
         if (userInfo) setUser(userInfo)
 
+        // Sync model list to OpenClaw config before starting
+        const models = await clawApi.getModels().catch(() => [])
+        if (models.length > 0) {
+          await window.electronAPI.syncOpenClawModels(models)
+        }
+
         // Start OpenClaw gateway and get URL
         const result = await window.electronAPI.startOpenClaw()
         if (result.error) {

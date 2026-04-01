@@ -22,6 +22,7 @@ interface ElectronAPI {
   restartOpenClaw: () => Promise<{ success: boolean; error?: string }>
   isOpenClawRunning: () => Promise<boolean>
   getOpenClawUrl: () => Promise<string>
+  syncOpenClawModels: (models: any[]) => Promise<{ success: boolean; error?: string }>
 
   // App
   getAppVersion: () => Promise<string>

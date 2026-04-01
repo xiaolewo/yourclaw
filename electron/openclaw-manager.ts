@@ -66,7 +66,9 @@ function getConfigDir(): string {
 
 /**
  * Write ~/.openclaw/openclaw.json so OpenClaw uses YourPro backend as model provider.
- * Uses JSON5 format (OpenClaw's native config format).
+ * Provider name "yourpro" avoids collision with built-in "openai" provider.
+ * baseUrl points to site root (no /v1 suffix -- OpenClaw appends /v1/chat/completions itself,
+ * and YourPro's ClawV1Controller is already mounted at /v1).
  */
 export function ensureOpenClawConfig(jwt?: string) {
   const configDir = getConfigDir()
@@ -74,21 +76,24 @@ export function ensureOpenClawConfig(jwt?: string) {
   const brand = getBrandConfig()
   const apiBase = brand.siteUrl.replace(/\/$/, '')
 
+  const provider: Record<string, any> = {
+    baseUrl: apiBase,
+    apiKey: jwt || 'yourclaw-pending',
+    api: 'openai-completions',
+    models: [],
+  }
+
   const config: Record<string, any> = {
     gateway: {
       port: OPENCLAW_PORT,
     },
     models: {
+      mode: 'merge',
       providers: {
-        openai: {
-          endpoint: `${apiBase}/v1`,
-          apiKey: jwt || 'yourclaw-pending',
-        },
+        yourpro: provider,
       },
     },
-    // Disable all channels - desktop client only
     channels: {},
-    // UI customization
     ui: {
       title: brand.siteName,
     },
@@ -98,14 +103,21 @@ export function ensureOpenClawConfig(jwt?: string) {
   try {
     if (fs.existsSync(configPath)) {
       const existing = JSON.parse(fs.readFileSync(configPath, 'utf-8'))
-      // Always update gateway port and provider
       existing.gateway = { ...(existing.gateway || {}), port: OPENCLAW_PORT }
       existing.models = existing.models || {}
+      existing.models.mode = 'merge'
       existing.models.providers = existing.models.providers || {}
-      existing.models.providers.openai = {
-        ...(existing.models.providers.openai || {}),
-        endpoint: `${apiBase}/v1`,
-        apiKey: jwt || existing.models.providers?.openai?.apiKey || 'yourclaw-pending',
+      const prev = existing.models.providers.yourpro || {}
+      existing.models.providers.yourpro = {
+        ...prev,
+        baseUrl: apiBase,
+        apiKey: jwt || prev.apiKey || 'yourclaw-pending',
+        api: 'openai-completions',
+        models: prev.models || [],
+      }
+      // Clean up legacy "openai" provider if we wrote it before
+      if (existing.models.providers.openai?.endpoint?.includes(apiBase)) {
+        delete existing.models.providers.openai
       }
       existing.ui = { ...(existing.ui || {}), title: brand.siteName }
       fs.writeFileSync(configPath, JSON.stringify(existing, null, 2))
@@ -126,8 +138,8 @@ export function updateOpenClawToken(jwt: string) {
   try {
     if (fs.existsSync(configPath)) {
       const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'))
-      if (config.models?.providers?.openai) {
-        config.models.providers.openai.apiKey = jwt
+      if (config.models?.providers?.yourpro) {
+        config.models.providers.yourpro.apiKey = jwt
       }
       fs.writeFileSync(configPath, JSON.stringify(config, null, 2))
       console.log('[OpenClaw] Token updated in config')
@@ -137,6 +149,37 @@ export function updateOpenClawToken(jwt: string) {
   } catch (err) {
     console.error('[OpenClaw] Failed to update token:', err)
     ensureOpenClawConfig(jwt)
+  }
+}
+
+/**
+ * Sync model list from YourPro /claw/models into openclaw.json providers.yourpro.models[]
+ * Called after login when we have the JWT and model list from the server.
+ */
+export function updateOpenClawModels(models: Array<{ id: string; displayName: string; modelId: string; maxContextTokens?: number }>) {
+  const configPath = path.join(getConfigDir(), 'openclaw.json')
+  try {
+    if (!fs.existsSync(configPath)) {
+      ensureOpenClawConfig()
+    }
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'))
+    if (!config.models?.providers?.yourpro) {
+      config.models = config.models || {}
+      config.models.providers = config.models.providers || {}
+      config.models.providers.yourpro = { baseUrl: '', apiKey: 'yourclaw-pending', api: 'openai-completions', models: [] }
+    }
+    config.models.providers.yourpro.models = models.map(m => ({
+      id: m.modelId,
+      name: m.displayName || m.modelId,
+      reasoning: false,
+      input: ['text'],
+      contextWindow: m.maxContextTokens || 128000,
+      maxTokens: 8192,
+    }))
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2))
+    console.log(`[OpenClaw] Models updated: ${models.length} models`)
+  } catch (err) {
+    console.error('[OpenClaw] Failed to update models:', err)
   }
 }
 

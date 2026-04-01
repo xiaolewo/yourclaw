@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, safeStorage, shell } from 'electron'
 import * as path from 'path'
 import { getBrandConfig } from './brand-config'
-import { startOpenClaw, stopOpenClaw, restartOpenClaw, isOpenClawRunning, updateOpenClawToken, getOpenClawPort, ensureOpenClawConfig } from './openclaw-manager'
+import { startOpenClaw, stopOpenClaw, restartOpenClaw, isOpenClawRunning, updateOpenClawToken, updateOpenClawModels, getOpenClawPort, ensureOpenClawConfig } from './openclaw-manager'
 import { checkLicense, startHeartbeat, stopHeartbeat } from './license-guard'
 import { createTray, destroyTray } from './tray'
 import { initUpdater, checkForUpdates, downloadUpdate } from './updater'
@@ -133,6 +133,15 @@ function setupIPC() {
   ipcMain.handle('is-openclaw-running', () => isOpenClawRunning())
 
   ipcMain.handle('get-openclaw-url', () => `http://localhost:${getOpenClawPort()}`)
+
+  ipcMain.handle('sync-openclaw-models', (_event, models: any[]) => {
+    try {
+      updateOpenClawModels(models)
+      return { success: true }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
 
   ipcMain.handle('get-app-version', () => app.getVersion())
 
